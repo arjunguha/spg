@@ -1,0 +1,18 @@
+[package]
+name = "spg"
+version = "1.0.0"
+authors = ["Arjun Guha <arjun@guha-anderson.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+image = "*"
+clap = "3.0.0-beta.1"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+bincode = "*"
+thiserror = "*"
+md5 = "*"
+warp = "*"
+tokio = { version = "*", features = ["macros"] }

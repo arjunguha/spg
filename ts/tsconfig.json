@@ -1,0 +1,21 @@
+{
+    "include": [
+        "src",
+    ],
+    "exclude": [
+        "dist"
+    ],
+    "compilerOptions": {
+        "module": "commonjs",
+        "outDir": "./dist",
+        "jsx": "react",
+        "strict": true,
+        "lib": ["es2020", "dom"],
+        "target": "ES2020",
+        "pretty": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "noImplicitAny": true,
+        "declaration": true,
+    }
+}
