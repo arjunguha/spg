@@ -138,6 +138,10 @@ impl Row {
                 .arg(&output_path_str)
                 .spawn()?;
             let exit_code = child_process.wait()?;
+            // I believe heif-convert returns exit code zero even if conversion
+            // fails. That's why we verify that output_path gets created (below).
+            // Note that we delete output_path (above) before calling
+            // heif-convert.
             if exit_code.success() == false || output_path.exists() == false {
                 println!("Error converting {} to a JPEG", &self.original_path);
                 return Err(error("could not convert HEIC to JPEG."));
