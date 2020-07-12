@@ -20,6 +20,7 @@ struct Opts {
 #[derive(Clap)]
 enum SubCommand {
     Add(Add),
+    Sync(Sync),
     Serve,
 }
 
@@ -28,6 +29,10 @@ struct Add {
     filename: String,
 }
 
+#[derive(Clap)]
+struct Sync {
+    directory: String,
+}
 // fn file_timestamp(p : impl AsRef<Path>) -> Result<u128, std::io::Error> {
 //     let metadata = fs::metadata(p)?;
 //     let modified_time = metadata.modified()?;
@@ -48,6 +53,9 @@ async fn main() {
         SubCommand::Add(add) => {
             image_table.add(&config, add.filename).unwrap();
             image_table.save(config.image_table_path);
+        }
+        SubCommand::Sync(sync) => {
+            image_table.add_remove_path(&config, &sync.directory).unwrap();
         }
         SubCommand::Serve => {
             resources::create_static_resources(&config);

@@ -16,3 +16,4 @@ thiserror = "*"
 md5 = "*"
 warp = "*"
 tokio = { version = "*", features = ["macros"] }
+walkdir = "*"

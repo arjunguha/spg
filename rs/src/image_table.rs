@@ -8,6 +8,34 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use walkdir::WalkDir;
+
+static KNOWN_EXTENSIONS: [&'static str; 6] = [ 
+    "heic",
+    "HEIC",
+    "jpg",
+    "JPG",
+    "jpeg",
+    "JPEG"
+];
+
+fn is_recognized_filename(path: &Path) -> bool {
+    let filename = path.file_name().and_then(|os_str| os_str.to_str());
+    let ext = path.extension().and_then(|os_str| os_str.to_str());
+    match (filename, ext) {
+        (Some(filename), Some(extension)) => {
+            // skip hidden files, including AppleDouble files.
+            if filename.starts_with(".") {
+                return false;
+            }
+            return KNOWN_EXTENSIONS.iter().find(|ext| **ext == extension).is_some();
+        }
+        _ => {
+            println!("skipping {}", path.to_string_lossy());
+            return false;
+        }
+    }
+}
 
 #[derive(Serialize)]
 pub struct RowView<'a> {
@@ -199,5 +227,20 @@ impl ImageTable {
                 webview_path: row.webview_path.as_str(),
             })
             .collect();
+    }
+
+
+    pub fn add_remove_path(&mut self, config: &Config, root: &str) -> Result<(), CommandError> {
+        let images: Vec<_> = WalkDir::new(root).into_iter()
+            // Skips all read errors
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| is_recognized_filename(entry.path()))
+            .collect();
+        for image in images.iter() {
+            if self.add(config, image.path()).is_ok() {
+                self.save(&config.image_table_path);
+            }
+        }
+        return Ok(());
     }
 }
