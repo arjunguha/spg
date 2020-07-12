@@ -46,28 +46,6 @@ fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     return Ok(i);
 }
 
-fn open_image_or_heic(dir: &str, path: impl AsRef<Path>) -> Result<DynamicImage, CommandError> {
-    let path: &Path = path.as_ref();
-    let ext = path
-        .extension()
-        .ok_or(error("filename has no extension"))?
-        .to_string_lossy();
-    if ext.to_lowercase() == "heic" {
-        let output_path = format!("{}/converted.jpg", dir);
-        let exit_code = Command::new("/usr/bin/heif-convert")
-            .arg(path)
-            .arg(&output_path)
-            .spawn()?
-            .wait()?;
-        if exit_code.success() == false {
-            return Err(error("could not convert HEIC to JPEG."));
-        }
-        return Ok(image::open(&output_path)?);
-    }
-    let original_image = image::open(path)?;
-    return Ok(original_image);
-}
-
 impl Row {
     fn new(config: &Config, original_path: impl Into<String>) -> Result<Self, CommandError> {
         let original_path_str: String = original_path.into();
@@ -115,8 +93,35 @@ impl Row {
         return Ok(());
     }
 
+    fn open_original(&self, dir: &str) -> Result<DynamicImage, CommandError> {
+        let path = Path::new(&self.original_path);
+        let ext = path
+            .extension()
+            .ok_or(error("filename has no extension"))?
+            .to_string_lossy();
+        if ext.to_lowercase() == "heic" {
+            let output_path_str = format!("{}/{:x}-converted.jpg", dir, self.md5);
+            let output_path = Path::new(&output_path_str);
+            if output_path.exists() {
+                fs::remove_file(output_path)?;
+            }
+            let mut child_process = Command::new("/usr/bin/heif-convert")
+                .arg(path)
+                .arg(&output_path_str)
+                .spawn()?;
+            let exit_code = child_process.wait()?;
+            if exit_code.success() == false || output_path.exists() == false {
+                println!("Error converting {} to a JPEG", &self.original_path);
+                return Err(error("could not convert HEIC to JPEG."));
+            }
+            return Ok(image::open(output_path)?);
+        }
+        let original_image = image::open(path)?;
+        return Ok(original_image);
+    }
+    
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
-        let original_image = open_image_or_heic(&config.cache_path, &self.original_path)?;
+        let original_image = self.open_original(&config.cache_path)?;
         let thumbnail = original_image.thumbnail(200, 200);
         thumbnail.save_with_format(
             &format!("{}/{}", config.cache_path, self.thumbnail_path),
@@ -167,8 +172,8 @@ impl ImageTable {
         return self.rows.iter_mut().find(|row| row.original_path == p);
     }
 
-    pub fn add(&mut self, config: &Config, original_path: String) -> Result<(), CommandError> {
-        let full_path = Path::new(&original_path).canonicalize()?;
+    pub fn add(&mut self, config: &Config, original_path: impl AsRef<Path>) -> Result<(), CommandError> {
+        let full_path = original_path.as_ref().canonicalize()?;
         let original_path = full_path.to_string_lossy().to_string();
         match self.get_by_original_path(&original_path) {
             None => {
