@@ -1,0 +1,15 @@
+body {
+font-family: 'Helvetica Neue', 'sans serif';
+background: rgb(208,207,227);
+background: linear-gradient(325deg, rgba(208,207,227,1) 0%, rgba(208,207,227,1) 50%, rgba(255,255,255,1) 100%);        
+}
+
+img {
+    border: 1px solid black;
+    padding: 2px;
+    margin: 2px;
+}
+
+a {
+    font-weight: bold;   
+}

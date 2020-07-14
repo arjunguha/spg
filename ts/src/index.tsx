@@ -63,15 +63,20 @@ class Index extends React.Component<{}, State> {
             gallery: gallery,
             image: image
         };
-        return <img src={image.thumbnail_path} 
+        return <img src={image.thumbnail_path}
             onClick={() => this.setState({ view: viewOnClick })}></img>;
     }
 
     renderImage(image: ImageView) {
         return (<div>
             <h1>{image.gallery}</h1>
-            <a href="#" onClick={() => this.fetchGallery(image.gallery)}>Back</a>
-            <img src={image.image.webview_path}></img>
+                <div>
+                    <a href="#" onClick={() => this.fetchGallery(image.gallery)}>Return to gallery</a>
+                </div>
+                <img src={image.image.webview_path}></img>
+                <div>
+                    <a href="#" onClick={() => this.fetchGallery(image.gallery)}>Return to gallery</a>
+                </div>
             </div>);
     }
 
@@ -89,7 +94,7 @@ class Index extends React.Component<{}, State> {
     render() {
         if (this.state.view.kind === 'home') {
             let links = this.state.galleries.map(name => 
-                <li> <div onClick={() => this.fetchGallery(name)}>{name}</div></li>);
+                <li> <a href="#" onClick={() => this.fetchGallery(name)}>{name}</a></li>);
             return (<div>
                 <h1>Home</h1>
                 <ul>{links}</ul>
