@@ -2,6 +2,7 @@ use super::config::Config;
 use std::path::Path;
 
 static INDEX_HTML: &'static str = include_str!("../../html/index.html");
+static INDEX_CSS: &'static str = include_str!("../../html/index.css");
 static INDEX_BUNDLE_JS: &'static str = include_str!("../../html/index.bundle.js");
 
 fn create_file_unless_exists(base_path: impl AsRef<Path>, name: &str, data: &str) {
@@ -17,5 +18,6 @@ fn create_file_unless_exists(base_path: impl AsRef<Path>, name: &str, data: &str
 pub fn create_static_resources(config: &Config) {
     let base = &config.cache_path;
     create_file_unless_exists(base, "index.html", INDEX_HTML);
+    create_file_unless_exists(base, "index.css", INDEX_CSS);
     create_file_unless_exists(base, "index.bundle.js", INDEX_BUNDLE_JS);
 }
