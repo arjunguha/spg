@@ -128,7 +128,7 @@ impl Row {
             .ok_or(error("filename has no extension"))?
             .to_string_lossy();
         if ext.to_lowercase() == "heic" {
-            let output_path_str = format!("{}/{:x}-converted.jpg", dir, self.md5);
+            let output_path_str = format!("{}/converted/{:x}-converted.jpg", dir, self.md5);
             let output_path = Path::new(&output_path_str);
             if output_path.exists() {
                 fs::remove_file(output_path)?;
@@ -156,12 +156,12 @@ impl Row {
         let original_image = self.open_original(&config.cache_path)?;
         let thumbnail = original_image.thumbnail(200, 200);
         thumbnail.save_with_format(
-            &format!("{}/{}", config.cache_path, self.thumbnail_path),
+            &format!("{}/www/photos/{}", config.cache_path, self.thumbnail_path),
             ImageFormat::Jpeg,
         )?;
         let webview = original_image.resize(1024, 1024, FilterType::Gaussian);
         webview.save_with_format(
-            &format!("{}/{}", config.cache_path, &self.webview_path),
+            &format!("{}/www/photos/{}", config.cache_path, &self.webview_path),
             ImageFormat::Jpeg,
         )?;
         return Ok(());

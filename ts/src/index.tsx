@@ -36,13 +36,13 @@ class Index extends React.Component<{}, State> {
     }
 
     async fetchListGalleries(): Promise<void> {
-        let resp = await fetch('/api/list_galleries');
+        let resp = await fetch('api/list_galleries');
         let body: string[] = await resp.json();
         this.setState({ galleries: body });
     }
 
     async fetchGalleryAsync(name: string): Promise<void> {
-        let resp = await fetch('/api/gallery_contents', {
+        let resp = await fetch('api/gallery_contents', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -63,8 +63,10 @@ class Index extends React.Component<{}, State> {
             gallery: gallery,
             image: image
         };
-        return <img src={image.thumbnail_path}
-            onClick={() => this.setState({ view: viewOnClick })}></img>;
+        return <div className="thumbnail">
+            <img src={`photos/${image.thumbnail_path}`}
+                onClick={() => this.setState({ view: viewOnClick })}></img>
+            </div>;
     }
 
     renderImage(image: ImageView) {
@@ -73,7 +75,7 @@ class Index extends React.Component<{}, State> {
                 <div>
                     <a href="#" onClick={() => this.fetchGallery(image.gallery)}>Return to gallery</a>
                 </div>
-                <img src={image.image.webview_path}></img>
+                <img src={`photos/${image.image.webview_path}`}></img>
                 <div>
                     <a href="#" onClick={() => this.fetchGallery(image.gallery)}>Return to gallery</a>
                 </div>
