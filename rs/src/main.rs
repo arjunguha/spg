@@ -5,8 +5,6 @@ mod resources;
 mod server;
 
 use clap::Clap;
-use config::Config;
-use image_table::ImageTable;
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Arjun Guha")]
@@ -22,6 +20,7 @@ enum SubCommand {
     Add(Add),
     Sync(Sync),
     Serve,
+    Init,
 }
 
 #[derive(Clap)]
@@ -44,22 +43,24 @@ struct Sync {
 #[tokio::main]
 async fn main() {
     let opts = Opts::parse();
-    let config = Config::from_default_paths(opts.config_path.as_deref())
-        .expect("could not open configuration");
 
-    let mut image_table = ImageTable::open_or_new(&config.image_table_path);
+    let data_dir = resources::get_data_dir_or_exit(opts.config_path);
 
     match opts.subcmd {
+        SubCommand::Init => {
+            resources::init(data_dir);
+        }
         SubCommand::Add(add) => {
-            image_table.add(&config, add.filename).unwrap();
-            image_table.save(config.image_table_path);
+            let mut spg = image_table::SimplePhotoGallery::new(data_dir);
+            spg.add(add.filename);
         }
         SubCommand::Sync(sync) => {
-            image_table.add_remove_path(&config, &sync.directory).unwrap();
+            let mut spg = image_table::SimplePhotoGallery::new(data_dir);
+            spg.sync(sync.directory);
         }
         SubCommand::Serve => {
-            resources::create_static_resources(&config);
-            server::serve(config, image_table).await
+            let spg = image_table::SimplePhotoGallery::new(data_dir);
+            spg.serve().await;
         }
     };
 }

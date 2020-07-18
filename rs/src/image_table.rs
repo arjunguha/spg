@@ -173,12 +173,18 @@ pub struct ImageTable {
     rows: Vec<Row>,
 }
 
+pub struct SimplePhotoGallery {
+    image_table: ImageTable,
+    config: Config
+}
+
 impl ImageTable {
-    fn new() -> Self {
+    pub fn new() -> Self {
         return ImageTable { rows: vec![] };
     }
 
-    fn open(path: &Path) -> Self {
+    pub fn open(path: impl AsRef<Path>) -> Self {
+        let path = path.as_ref();
         let bytes = std::fs::read(path).unwrap();
         return bincode::deserialize(&bytes).unwrap();
     }
@@ -187,17 +193,6 @@ impl ImageTable {
         let path: &Path = path.as_ref();
         let bytes = bincode::serialize(self).unwrap();
         std::fs::write(path, bytes).expect(&format!("Could not write to {:?}", path));
-    }
-
-    pub fn open_or_new(path: impl AsRef<Path>) -> Self {
-        let path = path.as_ref();
-        if path.exists() {
-            return Self::open(path);
-        }
-        println!("Initializing a new image gallery.");
-        let table = Self::new();
-        table.save(path);
-        return table;
     }
 
     fn get_by_original_path(&mut self, p: &str) -> Option<&mut Row> {
@@ -246,5 +241,29 @@ impl ImageTable {
             }
         }
         return Ok(());
+    }
+}
+
+impl SimplePhotoGallery {
+
+    pub fn new(data_dir: String) -> Self {
+        let config = Config::new(data_dir);
+        let image_table = ImageTable::open(&config.image_table_path);
+        return Self { config, image_table };
+    }
+
+    pub fn add(&mut self, filename: String) {
+        unwrap_or_exit(self.image_table.add(&self.config, filename),
+            "Error adding file.");
+        self.image_table.save(&self.config.image_table_path);
+    }
+
+    pub fn sync(&mut self, directory: String) {
+        unwrap_or_exit(self.image_table.add_remove_path(&self.config, &directory),
+            "Error synchronizing directory.");
+    }
+
+    pub async fn serve(self) {
+        crate::server::serve(self.config, self.image_table).await
     }
 }

@@ -13,3 +13,10 @@ pub enum CommandError {
 pub fn error(message: impl Into<String>) -> CommandError {
     return CommandError::Other(message.into());
 }
+
+pub fn unwrap_or_exit(result: Result<(), CommandError>, message: &'static str) {
+    if let Err(err) = result {
+        eprintln!("{}\n\n{}", err, message);
+        std::process::exit(1);
+    }
+}
