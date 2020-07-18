@@ -62,8 +62,6 @@ struct Row {
     webview_path: String,
 }
 
-// let original_image = image::open(&original_path)?;
-
 fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     let buf = fs::read(p)?;
     // 16 bytes, and 16 * 8 = 128 bits
@@ -229,20 +227,6 @@ impl ImageTable {
             .collect();
     }
 
-
-    pub fn add_remove_path(&mut self, config: &Config, root: &str) -> Result<(), CommandError> {
-        let images: Vec<_> = WalkDir::new(root).into_iter()
-            // Skips all read errors
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| is_recognized_filename(entry.path()))
-            .collect();
-        for image in images.iter() {
-            if self.add(config, image.path()).is_ok() {
-                self.save(&config.image_table_path);
-            }
-        }
-        return Ok(());
-    }
 }
 
 impl SimplePhotoGallery {
@@ -264,8 +248,55 @@ impl SimplePhotoGallery {
         self.image_table.save(&self.config.image_table_path);
     }
 
+    fn rm_(&mut self, path: impl AsRef<Path>) -> Result<(), CommandError> {
+        let path = path.as_ref();
+        let absolute_path = path.canonicalize()?;
+        let absolute_path = absolute_path.to_string_lossy();
+        let row_index = self.image_table.rows.iter()
+            .position(|row| row.original_path == absolute_path)
+            .ok_or_else(|| error("file is not in database"))?;
+        let row = self.image_table.rows.remove(row_index);
+        fs::remove_file(format!("{}/www/photos/{}", self.config.cache_path, row.thumbnail_path))?;
+        fs::remove_file(format!("{}/www/photos/{}", self.config.cache_path, row.webview_path))?;
+        return Ok(());
+    }
+
+    pub fn rm(&mut self, path: String) {
+        if let Err(err) = self.rm_(&path) {
+            eprintln!("{}\n\nError removing {}", err, &path);
+        }
+        self.image_table.save(&self.config.image_table_path);
+    }
+
+    pub fn add_remove_path(&mut self, root: &str) -> Result<(), CommandError> {
+        let images: Vec<_> = WalkDir::new(root).into_iter()
+            // Skips all read errors
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| is_recognized_filename(entry.path()))
+            .collect();
+        let mut images_on_disk: HashSet<_> = HashSet::new();
+        for image in images.iter() {
+            if self.image_table.add(&self.config, image.path()).is_ok() {
+                images_on_disk.insert(image.path().to_string_lossy().to_string());
+                self.image_table.save(&self.config.image_table_path);
+            }
+        }
+        let images_in_table: HashSet<_> = self.image_table.rows.iter()
+            .filter(|row| row.original_path.starts_with(root))
+            .map(|row| row.original_path.to_string())
+            .collect();
+        for original_path in images_in_table.into_iter() {
+            if images_on_disk.contains(&original_path) == false {
+                self.rm_(original_path)?;
+                self.image_table.save(&self.config.image_table_path);
+            }
+        }
+
+        return Ok(());
+    }
+
     pub fn sync(&mut self, directory: String) {
-        unwrap_or_exit(self.image_table.add_remove_path(&self.config, &directory),
+        unwrap_or_exit(self.add_remove_path(&directory),
             "Error synchronizing directory.");
     }
 

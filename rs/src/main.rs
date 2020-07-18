@@ -18,6 +18,7 @@ struct Opts {
 #[derive(Clap)]
 enum SubCommand {
     Add(Add),
+    Rm(Rm),    
     Sync(Sync),
     Serve,
     Init,
@@ -25,6 +26,11 @@ enum SubCommand {
 
 #[derive(Clap)]
 struct Add {
+    filename: String,
+}
+
+#[derive(Clap)]
+struct Rm {
     filename: String,
 }
 
@@ -53,6 +59,10 @@ async fn main() {
         SubCommand::Add(add) => {
             let mut spg = image_table::SimplePhotoGallery::new(data_dir);
             spg.add(add.filename);
+        }
+        SubCommand::Rm(add) => {
+            let mut spg = image_table::SimplePhotoGallery::new(data_dir);
+            spg.rm(add.filename);
         }
         SubCommand::Sync(sync) => {
             let mut spg = image_table::SimplePhotoGallery::new(data_dir);
