@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::process;
 use walkdir::WalkDir;
 
 static KNOWN_EXTENSIONS: [&'static str; 6] = [ 
@@ -246,8 +247,13 @@ impl ImageTable {
 
 impl SimplePhotoGallery {
 
-    pub fn new(data_dir: String) -> Self {
-        let config = Config::new(data_dir);
+    pub fn new(data_dir: impl AsRef<Path>) -> Self {
+        let data_dir = data_dir.as_ref();
+        if !data_dir.is_dir() {
+            eprintln!("Data directory not found. Run \'spg init\'.");
+            process::exit(1);
+        }
+        let config = Config::new(data_dir.to_string_lossy().to_string());
         let image_table = ImageTable::open(&config.image_table_path);
         return Self { config, image_table };
     }
