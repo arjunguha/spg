@@ -72,6 +72,33 @@ fn is_recognized_filename(path: &Path) -> bool {
     }
 }
 
+fn generate_thumbnail(image: &DynamicImage) -> DynamicImage {
+    use image::GenericImageView;
+    let (w, h) = image.dimensions();
+    // Ideally, we have w / h = 4 / 3 or 3 * w = 4 * h
+    if 3 * w == 4 * h {
+        return image.thumbnail(200, 150);
+    }
+    // We can crop either dimension by Δ:
+    // - (w - Δ) / h = 4 / 3
+    //   Δ = w - (4 * h / 3)
+    // - w / (h - Δ) = 4 / 3
+    //   Δ = h - (3 * w / 4)
+    //
+    // To minimize the amount of cropping needed, we calculate both candidate values  of Δ and crop
+    // either the width or the height.
+    let delta_w = w - (4 * h / 3);
+    let delta_h = h - (3 * w / 4);
+     // looked at souce code to figure out which number is which coordinate
+    let (x1, y1, x2, y2) = image.bounds();
+    if delta_w < delta_h {
+        return image.crop_imm(x1, y1, x2 - delta_w, y2).thumbnail(200, 150);
+    }
+    else {
+        return image.crop_imm(x1, y1, x2, y2 - delta_h).thumbnail(200, 150);
+    }
+}
+
 
 fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     let buf = fs::read(p)?;
@@ -164,7 +191,7 @@ impl Row {
     
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
         let original_image = self.open_original(&config.data_dir)?;
-        let thumbnail = original_image.thumbnail(200, 200);
+        let thumbnail = generate_thumbnail(&original_image);
         thumbnail.save_with_format(
             &format!("{}/www/photos/{}", config.data_dir, self.thumbnail_path),
             ImageFormat::Jpeg,
@@ -276,11 +303,16 @@ impl SimplePhotoGallery {
             .filter_map(|entry| entry.ok())
             .filter(|entry| is_recognized_filename(entry.path()))
             .collect();
+        let len = images.len();
+        println!("Found {} images.\n", len);
         let mut images_on_disk: HashSet<_> = HashSet::new();
-        for image in images.iter() {
+        for (n, image) in images.iter().enumerate() {
             if self.add_(image.path()).is_ok() {
                 images_on_disk.insert(image.path().to_string_lossy().to_string());
                 self.image_table.save(&self.config.image_table_path);
+            }
+            if n % 100 == 0 {
+                println!("{} remaining.", len - n);
             }
         }
         let images_in_table: HashSet<_> = self.image_table.rows.iter()
