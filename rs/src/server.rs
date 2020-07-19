@@ -37,7 +37,7 @@ pub async fn serve(config: Config, image_table: ImageTable) {
 
     let routes = gallery_list_route
         .or(gallery_contents_route)
-        .or(warp::fs::dir(format!("{}/www", config.cache_path)));
+        .or(warp::fs::dir(format!("{}/www", config.data_dir)));
 
     warp::serve(routes).bind(([0, 0, 0, 0], 8080)).await;
 }

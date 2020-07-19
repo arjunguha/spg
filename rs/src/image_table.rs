@@ -163,15 +163,15 @@ impl Row {
     }
     
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
-        let original_image = self.open_original(&config.cache_path)?;
+        let original_image = self.open_original(&config.data_dir)?;
         let thumbnail = original_image.thumbnail(200, 200);
         thumbnail.save_with_format(
-            &format!("{}/www/photos/{}", config.cache_path, self.thumbnail_path),
+            &format!("{}/www/photos/{}", config.data_dir, self.thumbnail_path),
             ImageFormat::Jpeg,
         )?;
         let webview = original_image.resize(1024, 1024, FilterType::Gaussian);
         webview.save_with_format(
-            &format!("{}/www/photos/{}", config.cache_path, &self.webview_path),
+            &format!("{}/www/photos/{}", config.data_dir, &self.webview_path),
             ImageFormat::Jpeg,
         )?;
         return Ok(());
@@ -258,8 +258,8 @@ impl SimplePhotoGallery {
             .position(|row| row.original_path == absolute_path)
             .ok_or_else(|| error("file is not in database"))?;
         let row = self.image_table.rows.remove(row_index);
-        fs::remove_file(format!("{}/www/photos/{}", self.config.cache_path, row.thumbnail_path))?;
-        fs::remove_file(format!("{}/www/photos/{}", self.config.cache_path, row.webview_path))?;
+        fs::remove_file(format!("{}/www/photos/{}", self.config.data_dir, row.thumbnail_path))?;
+        fs::remove_file(format!("{}/www/photos/{}", self.config.data_dir, row.webview_path))?;
         return Ok(());
     }
 
