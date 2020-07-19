@@ -11,6 +11,40 @@ use std::process::Command;
 use std::process;
 use walkdir::WalkDir;
 
+#[derive(Serialize)]
+pub struct RowView<'a> {
+    pub thumbnail_path: &'a str,
+    pub webview_path: &'a str,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Row {
+    // Path to the original image
+    original_path: String,
+    // MD5 of the original
+    md5: u128,
+    // modified time in milliseconds since Unix epoch
+    modified: u128,
+    // Name of the gallery (derived from original_path)
+    gallery: String,
+    // Title of the image (derived from original_path)
+    title: String,
+    // Path to the thumbnail (JPEG) that we build
+    thumbnail_path: String,
+    // Path to the web-sized (JPEG) that we build
+    webview_path: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ImageTable {
+    rows: Vec<Row>,
+}
+
+pub struct SimplePhotoGallery {
+    image_table: ImageTable,
+    config: Config
+}
+
 static KNOWN_EXTENSIONS: [&'static str; 6] = [ 
     "heic",
     "HEIC",
@@ -38,29 +72,6 @@ fn is_recognized_filename(path: &Path) -> bool {
     }
 }
 
-#[derive(Serialize)]
-pub struct RowView<'a> {
-    pub thumbnail_path: &'a str,
-    pub webview_path: &'a str,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Row {
-    // Path to the original image
-    original_path: String,
-    // MD5 of the original
-    md5: u128,
-    // modified time in milliseconds since Unix epoch
-    modified: u128,
-    // Name of the gallery (derived from original_path)
-    gallery: String,
-    // Title of the image (derived from original_path)
-    title: String,
-    // Path to the thumbnail (JPEG) that we build
-    thumbnail_path: String,
-    // Path to the web-sized (JPEG) that we build
-    webview_path: String,
-}
 
 fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     let buf = fs::read(p)?;
@@ -167,16 +178,6 @@ impl Row {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct ImageTable {
-    rows: Vec<Row>,
-}
-
-pub struct SimplePhotoGallery {
-    image_table: ImageTable,
-    config: Config
-}
-
 impl ImageTable {
     pub fn new() -> Self {
         return ImageTable { rows: vec![] };
@@ -196,19 +197,6 @@ impl ImageTable {
 
     fn get_by_original_path(&mut self, p: &str) -> Option<&mut Row> {
         return self.rows.iter_mut().find(|row| row.original_path == p);
-    }
-
-    pub fn add(&mut self, config: &Config, original_path: impl AsRef<Path>) -> Result<(), CommandError> {
-        let full_path = original_path.as_ref().canonicalize()?;
-        let original_path = full_path.to_string_lossy().to_string();
-        match self.get_by_original_path(&original_path) {
-            None => {
-                self.rows.push(Row::new(config, &original_path)?);
-                println!("{} added", &original_path);
-                return Ok(());
-            }
-            Some(row) => row.update(config),
-        }
     }
 
     pub fn gallery_list(&self) -> HashSet<&str> {
@@ -242,9 +230,23 @@ impl SimplePhotoGallery {
         return Self { config, image_table };
     }
 
+    fn add_(&mut self, original_path: impl AsRef<Path>) -> Result<(), CommandError> {
+        let full_path = original_path.as_ref().canonicalize()?;
+        let original_path = full_path.to_string_lossy().to_string();
+        match self.image_table.get_by_original_path(&original_path) {
+            None => {
+                self.image_table.rows.push(Row::new(&self.config, &original_path)?);
+                println!("{} added", &original_path);
+                return Ok(());
+            }
+            Some(row) => row.update(&self.config),
+        }
+    }
+
     pub fn add(&mut self, filename: String) {
-        unwrap_or_exit(self.image_table.add(&self.config, filename),
-            "Error adding file.");
+        if let Err(err) = self.add_(&filename) {
+            eprintln!("{}\n\nError adding {}", err, &filename);
+        }
         self.image_table.save(&self.config.image_table_path);
     }
 
@@ -276,7 +278,7 @@ impl SimplePhotoGallery {
             .collect();
         let mut images_on_disk: HashSet<_> = HashSet::new();
         for image in images.iter() {
-            if self.image_table.add(&self.config, image.path()).is_ok() {
+            if self.add_(image.path()).is_ok() {
                 images_on_disk.insert(image.path().to_string_lossy().to_string());
                 self.image_table.save(&self.config.image_table_path);
             }
@@ -287,8 +289,9 @@ impl SimplePhotoGallery {
             .collect();
         for original_path in images_in_table.into_iter() {
             if images_on_disk.contains(&original_path) == false {
-                self.rm_(original_path)?;
-                self.image_table.save(&self.config.image_table_path);
+                if self.rm_(original_path).is_ok() {
+                    self.image_table.save(&self.config.image_table_path);
+                }
             }
         }
 
@@ -296,8 +299,9 @@ impl SimplePhotoGallery {
     }
 
     pub fn sync(&mut self, directory: String) {
-        unwrap_or_exit(self.add_remove_path(&directory),
-            "Error synchronizing directory.");
+        if let Err(err) = self.add_remove_path(&directory) {
+            eprintln!("{}\n\nError synchronizing directory.", err);
+        }
     }
 
     pub async fn serve(self) {
