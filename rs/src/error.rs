@@ -7,6 +7,8 @@ pub enum CommandError {
     #[error("{0}")]
     IOError(#[from] std::io::Error),
     #[error("{0}")]
+    Exif(#[from] exif::Error),
+    #[error("{0}")]
     Other(String),
 }
 

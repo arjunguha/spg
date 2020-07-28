@@ -10,6 +10,7 @@ use std::path::Path;
 use std::process::Command;
 use std::process;
 use walkdir::WalkDir;
+use exif;
 
 #[derive(Serialize)]
 pub struct RowView<'a> {
@@ -111,6 +112,38 @@ fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     return Ok(i);
 }
 
+fn image_orientation(p: impl AsRef<Path>) -> Result<usize, CommandError> {
+    let file = fs::File::open(p)?;
+    let mut buf_reader = std::io::BufReader::new(&file);
+    let exif_data = exif::Reader::new().read_from_container(&mut buf_reader)?;
+    let orientation = exif_data
+        .get_field(exif::Tag::Orientation, exif::In::PRIMARY)
+        .and_then(|f| f.value.get_uint(0))
+        .unwrap_or(0);
+    return Ok(orientation as usize);
+}
+
+/// On an iPhone (and presumably other cameras), all images have the same width and height. However,
+/// holding the phone in landscape mode sets an orientation attribute in the EXIF data that
+/// accompanies the image. An image viewer, such as Preview, uses this attribute to show landscape
+/// images right-side up. However, the Rust image library does not read the EXIF data, so we need to
+/// fix the orientation ourselves.
+fn open_with_exif_rotation(p: impl AsRef<Path>) -> Result<DynamicImage, CommandError> {
+    let orientation = image_orientation(&p)?;
+    let original_image = image::open(&p)?;
+    let rotated_image = match orientation {
+        0 => original_image,
+        6 => original_image.rotate90(),
+        8 => original_image.rotate270(),
+        3 => original_image.rotate180(),
+        _ => {
+            eprintln!("Unknown EXIF orientation for {} (value is {})", p.as_ref().display(), orientation);
+            original_image
+        }
+    };
+    return Ok(rotated_image);
+}
+
 impl Row {
     fn new(config: &Config, original_path: impl Into<String>) -> Result<Self, CommandError> {
         let original_path_str: String = original_path.into();
@@ -183,10 +216,9 @@ impl Row {
                 println!("Error converting {} to a JPEG", &self.original_path);
                 return Err(error("could not convert HEIC to JPEG."));
             }
-            return Ok(image::open(output_path)?);
+            return open_with_exif_rotation(output_path);
         }
-        let original_image = image::open(path)?;
-        return Ok(original_image);
+        return open_with_exif_rotation(path);
     }
     
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
