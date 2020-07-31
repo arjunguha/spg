@@ -13,14 +13,14 @@ SPG is a command-line tool with the following key sub-commands:
 
 1. `spg init` initializes the database.
 2. `spg add FILENAME` adds a photo to database.
-3. `spg rm FILENAME` removes a photo from the database, but *does not
+3. `spg rm FILENAME` removes a photo from the database, but does not
   delete the original image.
 4. `spg sync DIRNAME` adds all photos in the directory to the database, and
    removes photos from the database that were added from the directory, but
    have since been deleted from this directory.
 
 Note that there are `spg` exhibits two subtle behaviors. First, the
-`spg rm` and `spg sync` commands *do not delete original photos. Second,
+`spg rm` and `spg sync` commands *do not delete original photos*. Second,
 if you add a photo to SPG (`spg add P`) and then remove the original (`rm P`),
 SPG will continue display its copy of the original. Thus, you must
 also remove the photo from the SPG database (`spg rm P`), or use `spg sync`
