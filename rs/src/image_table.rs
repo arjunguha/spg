@@ -16,6 +16,7 @@ use walkdir::WalkDir;
 pub struct RowView<'a> {
     pub thumbnail_path: &'a str,
     pub webview_path: &'a str,
+    pub original_path: &'a str,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -268,6 +269,7 @@ impl ImageTable {
             .map(|row| RowView {
                 thumbnail_path: row.thumbnail_path.as_str(),
                 webview_path: row.webview_path.as_str(),
+                original_path: row.original_path.as_str(),
             })
             .collect();
     }
