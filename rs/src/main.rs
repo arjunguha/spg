@@ -18,7 +18,7 @@ struct Opts {
 #[derive(Clap)]
 enum SubCommand {
     Add(Add),
-    Rm(Rm),    
+    Rm(Rm),
     Sync(Sync),
     Serve,
     Init,

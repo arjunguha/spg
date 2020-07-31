@@ -1,5 +1,6 @@
 use super::config::Config;
 use super::error::*;
+use exif;
 use image::imageops::FilterType;
 use image::DynamicImage;
 use image::ImageFormat;
@@ -7,10 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 use std::process;
+use std::process::Command;
 use walkdir::WalkDir;
-use exif;
 
 #[derive(Serialize)]
 pub struct RowView<'a> {
@@ -43,17 +43,10 @@ pub struct ImageTable {
 
 pub struct SimplePhotoGallery {
     image_table: ImageTable,
-    config: Config
+    config: Config,
 }
 
-static KNOWN_EXTENSIONS: [&'static str; 6] = [ 
-    "heic",
-    "HEIC",
-    "jpg",
-    "JPG",
-    "jpeg",
-    "JPEG"
-];
+static KNOWN_EXTENSIONS: [&'static str; 6] = ["heic", "HEIC", "jpg", "JPG", "jpeg", "JPEG"];
 
 fn is_recognized_filename(path: &Path) -> bool {
     let filename = path.file_name().and_then(|os_str| os_str.to_str());
@@ -64,7 +57,10 @@ fn is_recognized_filename(path: &Path) -> bool {
             if filename.starts_with(".") {
                 return false;
             }
-            return KNOWN_EXTENSIONS.iter().find(|ext| **ext == extension).is_some();
+            return KNOWN_EXTENSIONS
+                .iter()
+                .find(|ext| **ext == extension)
+                .is_some();
         }
         _ => {
             println!("skipping {}", path.to_string_lossy());
@@ -90,16 +86,14 @@ fn generate_thumbnail(image: &DynamicImage) -> DynamicImage {
     // either the width or the height.
     let delta_w = w - (4 * h / 3);
     let delta_h = h - (3 * w / 4);
-     // looked at souce code to figure out which number is which coordinate
+    // looked at souce code to figure out which number is which coordinate
     let (x1, y1, x2, y2) = image.bounds();
     if delta_w < delta_h {
         return image.crop_imm(x1, y1, x2 - delta_w, y2).thumbnail(200, 150);
-    }
-    else {
+    } else {
         return image.crop_imm(x1, y1, x2, y2 - delta_h).thumbnail(200, 150);
     }
 }
-
 
 fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     let buf = fs::read(p)?;
@@ -137,7 +131,11 @@ fn open_with_exif_rotation(p: impl AsRef<Path>) -> Result<DynamicImage, CommandE
         8 => original_image.rotate270(),
         3 => original_image.rotate180(),
         _ => {
-            eprintln!("Unknown EXIF orientation for {} (value is {})", p.as_ref().display(), orientation);
+            eprintln!(
+                "Unknown EXIF orientation for {} (value is {})",
+                p.as_ref().display(),
+                orientation
+            );
             original_image
         }
     };
@@ -220,7 +218,7 @@ impl Row {
         }
         return open_with_exif_rotation(path);
     }
-    
+
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
         let original_image = self.open_original(&config.data_dir)?;
         let thumbnail = generate_thumbnail(&original_image);
@@ -273,11 +271,9 @@ impl ImageTable {
             })
             .collect();
     }
-
 }
 
 impl SimplePhotoGallery {
-
     pub fn new(data_dir: impl AsRef<Path>) -> Self {
         let data_dir = data_dir.as_ref();
         if !data_dir.is_dir() {
@@ -286,7 +282,10 @@ impl SimplePhotoGallery {
         }
         let config = Config::new(data_dir.to_string_lossy().to_string());
         let image_table = ImageTable::open(&config.image_table_path);
-        return Self { config, image_table };
+        return Self {
+            config,
+            image_table,
+        };
     }
 
     fn add_(&mut self, original_path: impl AsRef<Path>) -> Result<(), CommandError> {
@@ -294,7 +293,9 @@ impl SimplePhotoGallery {
         let original_path = full_path.to_string_lossy().to_string();
         match self.image_table.get_by_original_path(&original_path) {
             None => {
-                self.image_table.rows.push(Row::new(&self.config, &original_path)?);
+                self.image_table
+                    .rows
+                    .push(Row::new(&self.config, &original_path)?);
                 println!("{} added", &original_path);
                 return Ok(());
             }
@@ -313,12 +314,21 @@ impl SimplePhotoGallery {
         let path = path.as_ref();
         let absolute_path = path.canonicalize()?;
         let absolute_path = absolute_path.to_string_lossy();
-        let row_index = self.image_table.rows.iter()
+        let row_index = self
+            .image_table
+            .rows
+            .iter()
             .position(|row| row.original_path == absolute_path)
             .ok_or_else(|| error("file is not in database"))?;
         let row = self.image_table.rows.remove(row_index);
-        fs::remove_file(format!("{}/www/photos/{}", self.config.data_dir, row.thumbnail_path))?;
-        fs::remove_file(format!("{}/www/photos/{}", self.config.data_dir, row.webview_path))?;
+        fs::remove_file(format!(
+            "{}/www/photos/{}",
+            self.config.data_dir, row.thumbnail_path
+        ))?;
+        fs::remove_file(format!(
+            "{}/www/photos/{}",
+            self.config.data_dir, row.webview_path
+        ))?;
         return Ok(());
     }
 
@@ -330,7 +340,8 @@ impl SimplePhotoGallery {
     }
 
     pub fn add_remove_path(&mut self, root: &str) -> Result<(), CommandError> {
-        let images: Vec<_> = WalkDir::new(root).into_iter()
+        let images: Vec<_> = WalkDir::new(root)
+            .into_iter()
             // Skips all read errors
             .filter_map(|entry| entry.ok())
             .filter(|entry| is_recognized_filename(entry.path()))
@@ -347,7 +358,10 @@ impl SimplePhotoGallery {
                 println!("{} remaining.", len - n);
             }
         }
-        let images_in_table: HashSet<_> = self.image_table.rows.iter()
+        let images_in_table: HashSet<_> = self
+            .image_table
+            .rows
+            .iter()
             .filter(|row| row.original_path.starts_with(root))
             .map(|row| row.original_path.to_string())
             .collect();
