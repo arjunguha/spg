@@ -10,6 +10,7 @@ use std::fs;
 use std::path::Path;
 use std::process;
 use std::process::Command;
+use std::process::Stdio;
 use walkdir::WalkDir;
 
 #[derive(Serialize)]
@@ -202,17 +203,23 @@ impl Row {
             if output_path.exists() {
                 fs::remove_file(output_path)?;
             }
-            let mut child_process = Command::new("/usr/bin/heif-convert")
+            let child_process = Command::new("/usr/bin/heif-convert")
                 .arg(path)
                 .arg(&output_path_str)
+                .stdin(Stdio::null())
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
                 .spawn()?;
-            let exit_code = child_process.wait()?;
+            let output = child_process.wait_with_output()?;
             // I believe heif-convert returns exit code zero even if conversion
             // fails. That's why we verify that output_path gets created (below).
             // Note that we delete output_path (above) before calling
             // heif-convert.
-            if exit_code.success() == false || output_path.exists() == false {
-                println!("Error converting {} to a JPEG", &self.original_path);
+            if output.status.success() == false || output_path.exists() == false {
+                eprintln!("Error converting {} to a JPEG. {} {}", 
+                    &self.original_path,
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr));
                 return Err(error("could not convert HEIC to JPEG."));
             }
             return open_with_exif_rotation(output_path);
@@ -257,8 +264,11 @@ impl ImageTable {
         return self.rows.iter_mut().find(|row| row.original_path == p);
     }
 
-    pub fn gallery_list(&self) -> HashSet<&str> {
-        return self.rows.iter().map(|row| row.gallery.as_str()).collect();
+    pub fn gallery_list(&self) -> Vec<&str> {
+        let galleries: HashSet<_> = self.rows.iter().map(|row| row.gallery.as_str()).collect();
+        let mut galleries: Vec<_> = galleries.into_iter().collect();
+        galleries.sort();
+        return galleries;
     }
 
     pub fn gallery_contents(&self, gallery: &str) -> Vec<RowView> {
