@@ -4,27 +4,26 @@ Simple Photo Gallery
 Simple Photo Gallery (SPG) is a web-based photo gallery that supports a variety
 of image formats, including the HEIC images that an iPhone produces. SPG is
 neither a photo editor, nor does it try to organize photos in any way. Instead,
-when you add a photo to SPG, it generates a thumbnail and a downsampled JPEG
-and stores both in its database (`~/.spg` by default). However, SPG does not
-modify or move the original photo file. SPG thus encourages you to organize
-photos in any way you like.
+when you add a photo to SPG, it generates a thumbnail and a downsampled JPEG,
+both of which are stored in its private directory (`~/.spg` by default).
+However, SPG does not modify or move the original photo file. SPG thus
+encourages you to organize photos in any way you like.
 
-SPG is a command-line tool with the following key sub-commands:
+SPG is a command-line tool with the following sub-commands:
 
-1. `spg init` initializes the database.
-2. `spg add FILENAME` adds a photo to database.
-3. `spg rm FILENAME` removes a photo from the database, but does not
-  delete the original image.
-4. `spg sync DIRNAME` adds all photos in the directory to the database, and
-   removes photos from the database that were added from the directory, but
-   have since been deleted from this directory.
+1. `spg init` initializes the private directory.
+2. `spg add FILENAME` adds a photo to SPG.
+3. `spg rm FILENAME` removes a photo from SPG, but does not delete the original
+   image.
+4. `spg sync DIRNAME` adds all photos in the directory to SPG, and removes photos
+   that had been added from the directory, but have since been deleted.
+5. `spg serve -p PORT -b BIND_ADDRESS` starts the web server.
 
-Note that there are `spg` exhibits two subtle behaviors. First, the
-`spg rm` and `spg sync` commands *do not delete original photos*. Second,
-if you add a photo to SPG (`spg add P`) and then remove the original (`rm P`),
-SPG will continue display its copy of the original. Thus, you must
-also remove the photo from the SPG database (`spg rm P`), or use `spg sync`
-to do so in bulk.
+Note that `spg` exhibits two subtle behaviors. First, the `spg rm` and 
+`spg sync` commands *do not delete original photos*. Second, if you add a photo
+to SPG (`spg add P`) and then remove the original (`spg rm P`), SPG will
+continue to display its copy of the original. Thus, you must also remove the
+photo from the SPG database (`spg rm P`), or use `spg sync` to do so in bulk.
 
 Requirements
 ------------
