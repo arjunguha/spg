@@ -1,5 +1,6 @@
 use super::config::Config;
 use super::image_table::ImageTable;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use warp::Filter;
 
@@ -14,7 +15,7 @@ async fn gallery_contents(
     return Ok(warp::reply::json(&image_table.gallery_contents(&gallery)));
 }
 
-pub async fn serve(config: Config, image_table: ImageTable) {
+pub async fn serve(addr: impl Into<SocketAddr> + 'static, config: Config, image_table: ImageTable) {
     let image_table = Arc::new(image_table);
     let config = Arc::new(config);
 
@@ -39,5 +40,5 @@ pub async fn serve(config: Config, image_table: ImageTable) {
         .or(gallery_contents_route)
         .or(warp::fs::dir(format!("{}/www", config.data_dir)));
 
-    warp::serve(routes).bind(([0, 0, 0, 0], 8080)).await;
+    warp::serve(routes).bind(addr).await;
 }

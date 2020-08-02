@@ -44,8 +44,8 @@ pub struct ImageTable {
 }
 
 pub struct SimplePhotoGallery {
-    image_table: ImageTable,
-    config: Config,
+    pub image_table: ImageTable,
+    pub config: Config,
 }
 
 static KNOWN_EXTENSIONS: [&'static str; 6] = ["heic", "HEIC", "jpg", "JPG", "jpeg", "JPEG"];
@@ -392,9 +392,5 @@ impl SimplePhotoGallery {
         if let Err(err) = self.add_remove_path(&directory) {
             eprintln!("{}\n\nError synchronizing directory.", err);
         }
-    }
-
-    pub async fn serve(self) {
-        crate::server::serve(self.config, self.image_table).await
     }
 }

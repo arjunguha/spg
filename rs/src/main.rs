@@ -4,6 +4,7 @@ mod image_table;
 mod resources;
 mod server;
 
+use std::net::SocketAddrV4;
 use clap::Clap;
 
 #[derive(Clap)]
@@ -20,8 +21,17 @@ enum SubCommand {
     Add(Add),
     Rm(Rm),
     Sync(Sync),
-    Serve,
+    Serve(Serve),
     Init,
+}
+
+#[derive(Clap)]
+struct Serve {
+    /// Port to listen on
+    #[clap(long, short)]
+    port: u16,
+    #[clap(long, short, default_value = "127.0.0.1")]
+    bind_address: String,
 }
 
 #[derive(Clap)]
@@ -68,9 +78,12 @@ async fn main() {
             let mut spg = image_table::SimplePhotoGallery::new(data_dir);
             spg.sync(sync.directory);
         }
-        SubCommand::Serve => {
+        SubCommand::Serve(serve) => {
             let spg = image_table::SimplePhotoGallery::new(data_dir);
-            spg.serve().await;
+            let sock_addr = SocketAddrV4::new(
+                serve.bind_address.parse().expect("invalid address"),
+                serve.port);
+            server::serve(sock_addr, spg.config, spg.image_table).await;
         }
     };
 }
