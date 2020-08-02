@@ -19,9 +19,9 @@ jobs:
     - name: Install NPM dependencies
       run: npm install
       working-directory: ts
-    - name: Build TypeScript
+    - name: Compile (TypeScript)
       run: npm run-script build
       working-directory: ts
-    - name: Build Rust
+    - name: Compile (Rust)
       run: cargo build
       working-directory: rs
