@@ -124,11 +124,14 @@ fn image_orientation(p: impl AsRef<Path>) -> Result<usize, CommandError> {
 /// accompanies the image. An image viewer, such as Preview, uses this attribute to show landscape
 /// images right-side up. However, the Rust image library does not read the EXIF data, so we need to
 /// fix the orientation ourselves.
+///
+/// The orientation is a magic number. There is probably a standard, but this web page seems
+/// reliable too: [https://www.impulseadventure.com/photo/exif-orientation.html].
 fn open_with_exif_rotation(p: impl AsRef<Path>) -> Result<DynamicImage, CommandError> {
     let orientation = image_orientation(&p)?;
     let original_image = image::open(&p)?;
     let rotated_image = match orientation {
-        0 => original_image,
+        1 => original_image,
         6 => original_image.rotate90(),
         8 => original_image.rotate270(),
         3 => original_image.rotate180(),
