@@ -11,7 +11,7 @@
   "dependencies": {
     "@types/react": "^16.9.44",
     "@types/react-dom": "^16.9.8",
-    "browserify": "^16.5.1",
+    "browserify": "^16.5.2",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "typescript": "^3.9.7"
