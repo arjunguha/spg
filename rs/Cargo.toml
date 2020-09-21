@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 image = "*"
-clap = "3.0.0-beta.1"
+clap = "3.0.0-beta.2"
 serde = { version = "*", features = ["derive"] }
 serde_json = "*"
 bincode = "*"
