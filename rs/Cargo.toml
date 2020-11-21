@@ -15,6 +15,6 @@ bincode = "*"
 thiserror = "*"
 md5 = "*"
 warp = "*"
-tokio = { version = "*", features = ["macros"] }
+tokio = { version = "*", features = ["macros", "rt-multi-thread"] }
 walkdir = "*"
 kamadak-exif = "*"
