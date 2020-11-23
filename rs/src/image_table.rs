@@ -78,7 +78,7 @@ fn generate_thumbnail(image: &DynamicImage) -> DynamicImage {
     if 3 * w == 4 * h {
         return image.thumbnail(200, 150);
     }
-    // We can crop either dimension by Δ:
+    // We try to find a Δ > 0, to crop either width or height, but not both
     // - (w - Δ) / h = 4 / 3
     //   Δ = w - (4 * h / 3)
     // - w / (h - Δ) = 4 / 3
@@ -86,14 +86,27 @@ fn generate_thumbnail(image: &DynamicImage) -> DynamicImage {
     //
     // To minimize the amount of cropping needed, we calculate both candidate values  of Δ and crop
     // either the width or the height.
-    let delta_w = w - (4 * h / 3);
-    let delta_h = h - (3 * w / 4);
+    let delta_w = w.checked_sub(4 * h / 3);
+    let delta_h = h.checked_sub(3 * w / 4);
     // looked at souce code to figure out which number is which coordinate
     let (x1, y1, x2, y2) = image.bounds();
-    if delta_w < delta_h {
-        return image.crop_imm(x1, y1, x2 - delta_w, y2).thumbnail(200, 150);
-    } else {
-        return image.crop_imm(x1, y1, x2, y2 - delta_h).thumbnail(200, 150);
+    match (delta_w, delta_h) {
+        (None, None) => {
+            panic!("bug in generate_thumbnail calculating crop");
+        }
+        (Some(delta_w), None) => {
+            return image.crop_imm(x1, y1, x2 - delta_w, y2).thumbnail(200, 150);
+        }
+        (None, Some(delta_h)) => {
+            return image.crop_imm(x1, y1, x2, y2 - delta_h).thumbnail(200, 150);
+        }
+        (Some(delta_w), Some(delta_h)) => {
+            if delta_w < delta_h {
+                return image.crop_imm(x1, y1, x2 - delta_w, y2).thumbnail(200, 150);
+            } else {
+                return image.crop_imm(x1, y1, x2, y2 - delta_h).thumbnail(200, 150);
+            }
+        }
     }
 }
 
@@ -111,12 +124,18 @@ fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
 fn image_orientation(p: impl AsRef<Path>) -> Result<usize, CommandError> {
     let file = fs::File::open(p)?;
     let mut buf_reader = std::io::BufReader::new(&file);
-    let exif_data = exif::Reader::new().read_from_container(&mut buf_reader)?;
-    let orientation = exif_data
-        .get_field(exif::Tag::Orientation, exif::In::PRIMARY)
-        .and_then(|f| f.value.get_uint(0))
-        .unwrap_or(0);
-    return Ok(orientation as usize);
+    if let Ok(exif_data) = exif::Reader::new().read_from_container(&mut buf_reader) {
+        let orientation = exif_data
+            .get_field(exif::Tag::Orientation, exif::In::PRIMARY)
+            .and_then(|f| f.value.get_uint(0))
+            .unwrap_or(0);
+        return Ok(orientation as usize);
+    }
+
+    // Likely that the image does not have any EXIF data. It is also possible that image is
+    // corrupted, or there was a read error, but we are ignoring those.
+    // 1 is the magic number which means "original orientation".
+    return Ok(1);
 }
 
 /// On an iPhone (and presumably other cameras), all images have the same width and height. However,
@@ -323,6 +342,25 @@ impl SimplePhotoGallery {
             eprintln!("{}\n\nError adding {}", err, &filename);
         }
         self.image_table.save(&self.config.image_table_path);
+    }
+
+    pub fn stat(&mut self, path: impl AsRef<Path>) {
+        let path_buf = path.as_ref().canonicalize().expect("could not canonicalize path");
+        let canonical_path = path_buf.to_string_lossy().to_string();
+        match self.image_table.get_by_original_path(&canonical_path) {
+            None => {
+                println!("Nothing is in the gallery with this path.");
+            }
+            Some(row) => {
+                let current_md5 = file_md5(path).expect("could not calculuate md5 of image");
+                if current_md5 != row.md5 {
+                    println!("The image in gallery at this path has a different md5 sum.");
+                }
+                else {
+                    println!("The image is in the gallery.");
+                }
+            }
+        }
     }
 
     fn rm_(&mut self, path: impl AsRef<Path>) -> Result<(), CommandError> {

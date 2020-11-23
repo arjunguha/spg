@@ -48,6 +48,7 @@ pub fn init(config_path: impl AsRef<Path>) {
     let www_path = config_path.join("www");
     mkdir_or_exit(&www_path);
     mkdir_or_exit(config_path.join("converted"));
+    mkdir_or_exit(config_path.join("www").join("photos"));
     create_file_or_exit(www_path.join("index.html"), INDEX_HTML);
     create_file_or_exit(www_path.join("index.css"), INDEX_CSS);
     create_file_or_exit(www_path.join("index.bundle.js"), INDEX_BUNDLE_JS);

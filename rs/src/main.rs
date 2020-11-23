@@ -3,6 +3,8 @@ mod error;
 mod image_table;
 mod resources;
 mod server;
+#[cfg(test)]
+mod tests;
 
 use std::net::SocketAddrV4;
 use clap::Clap;
@@ -21,6 +23,7 @@ enum SubCommand {
     Add(Add),
     Rm(Rm),
     Sync(Sync),
+    Stat(Stat),
     Serve(Serve),
     Init,
 }
@@ -48,6 +51,12 @@ struct Rm {
 struct Sync {
     directory: String,
 }
+
+#[derive(Clap)]
+struct Stat {
+    filename: String,
+}
+
 // fn file_timestamp(p : impl AsRef<Path>) -> Result<u128, std::io::Error> {
 //     let metadata = fs::metadata(p)?;
 //     let modified_time = metadata.modified()?;
@@ -77,6 +86,10 @@ async fn main() {
         SubCommand::Sync(sync) => {
             let mut spg = image_table::SimplePhotoGallery::new(data_dir);
             spg.sync(sync.directory);
+        }
+        SubCommand::Stat(stat) => {
+            let mut spg = image_table::SimplePhotoGallery::new(data_dir);
+            spg.stat(stat.filename);
         }
         SubCommand::Serve(serve) => {
             let spg = image_table::SimplePhotoGallery::new(data_dir);

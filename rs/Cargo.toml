@@ -18,3 +18,7 @@ warp = "*"
 tokio = { version = "*", features = ["macros", "rt-multi-thread"] }
 walkdir = "*"
 kamadak-exif = "*"
+
+[dev-dependencies]
+tempfile = "*"
+duct = "*"
