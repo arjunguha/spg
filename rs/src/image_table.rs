@@ -121,7 +121,7 @@ fn file_md5(p: impl AsRef<Path>) -> Result<u128, std::io::Error> {
     return Ok(i);
 }
 
-fn image_orientation(p: impl AsRef<Path>) -> Result<usize, CommandError> {
+fn image_orientation(p: impl AsRef<Path>) -> Result<usize, std::io::Error> {
     let file = fs::File::open(p)?;
     let mut buf_reader = std::io::BufReader::new(&file);
     if let Ok(exif_data) = exif::Reader::new().read_from_container(&mut buf_reader) {
@@ -147,8 +147,8 @@ fn image_orientation(p: impl AsRef<Path>) -> Result<usize, CommandError> {
 /// The orientation is a magic number. There is probably a standard, but this web page seems
 /// reliable too: [https://www.impulseadventure.com/photo/exif-orientation.html].
 fn open_with_exif_rotation(p: impl AsRef<Path>) -> Result<DynamicImage, CommandError> {
-    let orientation = image_orientation(&p)?;
-    let original_image = image::open(&p)?;
+    let orientation = image_orientation(&p).map_err(trace("calculating orientation"))?;
+    let original_image = image::open(&p).map_err(trace("reading image file"))?;
     let rotated_image = match orientation {
         1 => original_image,
         6 => original_image.rotate90(),
@@ -172,7 +172,7 @@ impl Row {
 
         let original_path: &Path = original_path_str.as_ref();
 
-        let md5 = file_md5(&original_path)?;
+        let md5 = file_md5(&original_path).map_err(trace("calculating MD5 of file"))?;
 
         let title: &Path = original_path.file_name().unwrap().as_ref();
         let title = String::from(title.file_stem().unwrap().to_string_lossy());
@@ -223,7 +223,7 @@ impl Row {
             let output_path_str = format!("{}/converted/{:x}-converted.jpg", dir, self.md5);
             let output_path = Path::new(&output_path_str);
             if output_path.exists() {
-                fs::remove_file(output_path)?;
+                fs::remove_file(output_path).map_err(trace("deleting existing converted JPEG"))?;
             }
             let child_process = Command::new("/usr/bin/heif-convert")
                 .arg(path)
@@ -231,8 +231,9 @@ impl Row {
                 .stdin(Stdio::null())
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
-                .spawn()?;
-            let output = child_process.wait_with_output()?;
+                .spawn().map_err(trace("starting /usr/bin/heif-convert"))?;
+            let output = child_process.wait_with_output()
+                .map_err(trace("running heif-convert"))?;
             // I believe heif-convert returns exit code zero even if conversion
             // fails. That's why we verify that output_path gets created (below).
             // Note that we delete output_path (above) before calling
@@ -250,17 +251,17 @@ impl Row {
     }
 
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
-        let original_image = self.open_original(&config.data_dir)?;
+        let original_image = self.open_original(&config.data_dir).map_err(trace("reading image"))?;
         let thumbnail = generate_thumbnail(&original_image);
         thumbnail.save_with_format(
             &format!("{}/www/photos/{}", config.data_dir, self.thumbnail_path),
             ImageFormat::Jpeg,
-        )?;
+        ).map_err(trace("saving thumbnail"))?;
         let webview = original_image.resize(1024, 1024, FilterType::Gaussian);
         webview.save_with_format(
             &format!("{}/www/photos/{}", config.data_dir, &self.webview_path),
             ImageFormat::Jpeg,
-        )?;
+        ).map_err(trace("saving web-view image"))?;
         return Ok(());
     }
 }
