@@ -1,5 +1,6 @@
 use super::config::Config;
 use super::image_table::ImageTable;
+use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use warp::Filter;
@@ -15,7 +16,12 @@ async fn gallery_contents(
     return Ok(warp::reply::json(&image_table.gallery_contents(&gallery)));
 }
 
-pub async fn serve(addr: impl Into<SocketAddr> + 'static, config: Config, image_table: ImageTable) {
+pub async fn serve(
+    addr: impl Into<SocketAddr> + 'static,
+    until: impl Future<Output = ()> + Send + 'static,
+    config: Config,
+    image_table: ImageTable,
+) {
     let image_table = Arc::new(image_table);
     let config = Arc::new(config);
 
@@ -40,5 +46,8 @@ pub async fn serve(addr: impl Into<SocketAddr> + 'static, config: Config, image_
         .or(gallery_contents_route)
         .or(warp::fs::dir(format!("{}/www", config.data_dir)));
 
-    warp::serve(routes).bind(addr).await;
+    warp::serve(routes)
+        .bind_with_graceful_shutdown(addr, until)
+        .1
+        .await;
 }
