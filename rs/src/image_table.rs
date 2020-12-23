@@ -231,18 +231,22 @@ impl Row {
                 .stdin(Stdio::null())
                 .stderr(Stdio::piped())
                 .stdout(Stdio::piped())
-                .spawn().map_err(trace("starting /usr/bin/heif-convert"))?;
-            let output = child_process.wait_with_output()
+                .spawn()
+                .map_err(trace("starting /usr/bin/heif-convert"))?;
+            let output = child_process
+                .wait_with_output()
                 .map_err(trace("running heif-convert"))?;
             // I believe heif-convert returns exit code zero even if conversion
             // fails. That's why we verify that output_path gets created (below).
             // Note that we delete output_path (above) before calling
             // heif-convert.
             if output.status.success() == false || output_path.exists() == false {
-                eprintln!("Error converting {} to a JPEG. {} {}", 
+                eprintln!(
+                    "Error converting {} to a JPEG. {} {}",
                     &self.original_path,
                     String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr));
+                    String::from_utf8_lossy(&output.stderr)
+                );
                 return Err(error("could not convert HEIC to JPEG."));
             }
             return open_with_exif_rotation(output_path);
@@ -251,17 +255,23 @@ impl Row {
     }
 
     fn generate_jpegs(&self, config: &Config) -> Result<(), CommandError> {
-        let original_image = self.open_original(&config.data_dir).map_err(trace("reading image"))?;
+        let original_image = self
+            .open_original(&config.data_dir)
+            .map_err(trace("reading image"))?;
         let thumbnail = generate_thumbnail(&original_image);
-        thumbnail.save_with_format(
-            &format!("{}/www/photos/{}", config.data_dir, self.thumbnail_path),
-            ImageFormat::Jpeg,
-        ).map_err(trace("saving thumbnail"))?;
+        thumbnail
+            .save_with_format(
+                &format!("{}/www/photos/{}", config.data_dir, self.thumbnail_path),
+                ImageFormat::Jpeg,
+            )
+            .map_err(trace("saving thumbnail"))?;
         let webview = original_image.resize(1024, 1024, FilterType::Gaussian);
-        webview.save_with_format(
-            &format!("{}/www/photos/{}", config.data_dir, &self.webview_path),
-            ImageFormat::Jpeg,
-        ).map_err(trace("saving web-view image"))?;
+        webview
+            .save_with_format(
+                &format!("{}/www/photos/{}", config.data_dir, &self.webview_path),
+                ImageFormat::Jpeg,
+            )
+            .map_err(trace("saving web-view image"))?;
         return Ok(());
     }
 }
@@ -346,7 +356,10 @@ impl SimplePhotoGallery {
     }
 
     pub fn stat(&mut self, path: impl AsRef<Path>) {
-        let path_buf = path.as_ref().canonicalize().expect("could not canonicalize path");
+        let path_buf = path
+            .as_ref()
+            .canonicalize()
+            .expect("could not canonicalize path");
         let canonical_path = path_buf.to_string_lossy().to_string();
         match self.image_table.get_by_original_path(&canonical_path) {
             None => {
@@ -356,8 +369,7 @@ impl SimplePhotoGallery {
                 let current_md5 = file_md5(path).expect("could not calculuate md5 of image");
                 if current_md5 != row.md5 {
                     println!("The image in gallery at this path has a different md5 sum.");
-                }
-                else {
+                } else {
                     println!("The image is in the gallery.");
                 }
             }

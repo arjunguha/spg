@@ -1,13 +1,15 @@
 mod config;
 mod error;
 mod image_table;
+mod monitor_fs;
 mod resources;
 mod server;
 #[cfg(test)]
 mod tests;
 
-use std::net::SocketAddrV4;
 use clap::Clap;
+use futures::prelude::*;
+use std::net::SocketAddrV4;
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Arjun Guha")]
@@ -92,11 +94,17 @@ async fn main() {
             spg.stat(stat.filename);
         }
         SubCommand::Serve(serve) => {
-            let spg = image_table::SimplePhotoGallery::new(data_dir);
-            let sock_addr = SocketAddrV4::new(
-                serve.bind_address.parse().expect("invalid address"),
-                serve.port);
-            server::serve(sock_addr, spg.config, spg.image_table).await;
+            let mut changes = monitor_fs::monitor_changes(&data_dir);
+            loop {
+                let until = changes.next().await.expect("receive");
+                let spg = image_table::SimplePhotoGallery::new(&data_dir);
+                let sock_addr = SocketAddrV4::new(
+                    serve.bind_address.parse().expect("invalid address"),
+                    serve.port,
+                );
+                server::serve(sock_addr, until.map(|_| ()), spg.config, spg.image_table).await;
+                eprintln!("Restarting server");
+            }
         }
     };
 }

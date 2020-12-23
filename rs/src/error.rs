@@ -14,8 +14,10 @@ pub enum CommandError {
     Trace(String, Box<CommandError>),
 }
 
-pub fn trace<E>(message: impl Into<String>) -> Box<dyn FnOnce(E) -> CommandError> where
-  E : Into<CommandError> {
+pub fn trace<E>(message: impl Into<String>) -> Box<dyn FnOnce(E) -> CommandError>
+where
+    E: Into<CommandError>,
+{
     let message = message.into();
     return Box::new(move |err| {
         return CommandError::Trace(message, Box::new(err.into()));
