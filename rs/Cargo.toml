@@ -20,6 +20,7 @@ walkdir = "*"
 kamadak-exif = "*"
 inotify = { version = "0.8.3" }
 futures = "*"
+http = "*"
 
 [dev-dependencies]
 tempfile = "*"

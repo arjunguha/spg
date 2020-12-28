@@ -1434,6 +1434,7 @@ dependencies = [
  "clap",
  "duct",
  "futures",
+ "http",
  "image",
  "inotify",
  "kamadak-exif",

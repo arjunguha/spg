@@ -5,6 +5,7 @@ type GalleryImage = {
     'thumbnail_path': string,
     'webview_path': string,
     'original_path': string
+    'md5': string,
 }
 
 // Viewing an entire gallery
@@ -103,7 +104,7 @@ class Index extends React.Component<{}, State> {
                 <div>
                     <a href="#" onClick={() => this.handleAsyncError(this.fetchGallery(image.gallery))}>Return to gallery</a>
                 </div>
-                <div>{image.image.original_path}</div>
+                <div><a href={"api/original/" + image.image.md5}>{image.image.original_path}</a></div>
                 <img src={`photos/${image.image.webview_path}`}></img>
                 <div>
                     <a href="#" onClick={() => this.handleAsyncError(this.fetchGallery(image.gallery))}>Return to gallery</a>

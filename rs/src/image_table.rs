@@ -18,12 +18,13 @@ pub struct RowView<'a> {
     pub thumbnail_path: &'a str,
     pub webview_path: &'a str,
     pub original_path: &'a str,
+    pub md5: String,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Row {
+pub struct Row {
     // Path to the original image
-    original_path: String,
+    pub original_path: String,
     // MD5 of the original
     md5: u128,
     // modified time in milliseconds since Unix epoch
@@ -297,6 +298,10 @@ impl ImageTable {
         return self.rows.iter_mut().find(|row| row.original_path == p);
     }
 
+    pub fn get_by_hash(&self, hash: u128) -> Option<&Row> {
+        return self.rows.iter().find(|row| row.md5 == hash);
+    }
+
     pub fn gallery_list(&self) -> Vec<&str> {
         let galleries: HashSet<_> = self.rows.iter().map(|row| row.gallery.as_str()).collect();
         let mut galleries: Vec<_> = galleries.into_iter().collect();
@@ -313,6 +318,7 @@ impl ImageTable {
                 thumbnail_path: row.thumbnail_path.as_str(),
                 webview_path: row.webview_path.as_str(),
                 original_path: row.original_path.as_str(),
+                md5: format!("{:x}", row.md5),
             })
             .collect();
     }
