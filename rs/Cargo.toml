@@ -18,7 +18,7 @@ warp = "*"
 tokio = { version = "0.2.*", features = ["macros", "rt-threaded"] }
 walkdir = "*"
 kamadak-exif = "*"
-inotify = { version = "0.8.3" }
+inotify = { version = "0.9.2" }
 futures = "*"
 http = "*"
 
