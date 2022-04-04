@@ -422,9 +422,14 @@ impl SimplePhotoGallery {
         println!("Found {} images.\n", len);
         let mut images_on_disk: HashSet<_> = HashSet::new();
         for (n, image) in images.iter().enumerate() {
-            if self.add_(image.path()).is_ok() {
-                images_on_disk.insert(image.path().to_string_lossy().to_string());
-                self.image_table.save(&self.config.image_table_path);
+            match self.add_(image.path()) {
+                Ok(()) => {
+                    images_on_disk.insert(image.path().to_string_lossy().to_string());
+                    self.image_table.save(&self.config.image_table_path);
+                }
+                Err(err) => {
+                    println!("Error adding {}: {}", image.path().display(), err);
+                }
             }
             if n % 100 == 0 {
                 println!("{} remaining.", len - n);
